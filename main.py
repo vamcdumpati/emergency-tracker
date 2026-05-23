@@ -8,7 +8,7 @@ from pathlib import Path
 
 load_dotenv()
 
-from app.routers import auth, contacts, tracking
+from app.routers import auth, contacts, tracking, otp_auth
 
 # ── App ───────────────────────────────────────────────────────────────────────
 
@@ -34,6 +34,7 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 # ── Routers ───────────────────────────────────────────────────────────────────
 
 app.include_router(auth.router)
+app.include_router(otp_auth.router)
 app.include_router(contacts.router)
 app.include_router(tracking.router)
 
