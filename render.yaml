@@ -1,0 +1,23 @@
+# render.yaml – Deploy to Render.com (free tier)
+# 1. Push this repo to GitHub
+# 2. Go to render.com → New → Web Service → connect your repo
+# 3. Render auto-detects this file
+
+services:
+  - type: web
+    name: emergency-tracker-api
+    env: python
+    plan: free                          # Free 750 hrs/month
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SUPABASE_URL
+        sync: false                     # Set manually in Render dashboard
+      - key: SUPABASE_KEY
+        sync: false
+      - key: FAST2SMS_API_KEY
+        sync: false
+      - key: BASE_URL
+        sync: false                     # e.g. https://emergency-tracker-api.onrender.com
+      - key: SECRET_KEY
+        generateValue: true             # Auto-generated random key

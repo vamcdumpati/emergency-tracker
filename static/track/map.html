@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🚨 Live Location – {{USER_NAME}}</title>
+
+  <!-- Leaflet.js – free, no API key -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #fff;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      background: #1a1a1a;
+      border-bottom: 2px solid #ff3b30;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .sos-badge {
+      background: #ff3b30;
+      color: #fff;
+      font-weight: 700;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .ended-badge {
+      background: #555;
+      animation: none;
+    }
+
+    header h1 { font-size: 16px; font-weight: 600; flex: 1; }
+
+    /* ── Map ── */
+    #map {
+      flex: 1;
+      width: 100%;
+    }
+
+    /* ── Footer ── */
+    footer {
+      background: #1a1a1a;
+      border-top: 1px solid #333;
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+      font-size: 13px;
+    }
+
+    #coords { color: #aaa; font-size: 12px; }
+    #last-update { color: #aaa; font-size: 12px; }
+
+    #status-dot {
+      width: 10px; height: 10px;
+      background: #34c759;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
+      animation: pulse 1.5s infinite;
+    }
+
+    .status-offline { background: #aaa !important; animation: none !important; }
+
+    /* Leaflet popup tweak */
+    .leaflet-popup-content { font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="sos-badge {{STATUS === 'ENDED' ? 'ended-badge' : ''}}" id="badge">
+    {{STATUS}}
+  </span>
+  <h1>🚨 {{USER_NAME}} needs help!</h1>
+</header>
+
+<div id="map"></div>
+
+<footer>
+  <div>
+    <span id="status-dot"></span>
+    <span id="conn-status">Connecting…</span>
+  </div>
+  <div>
+    <div id="coords">Waiting for location…</div>
+    <div id="last-update"></div>
+  </div>
+</footer>
+
+<script>
+  // ── Map setup ──────────────────────────────────────────────────────────────
+  const map = L.map('map').setView([{{INIT_LAT}}, {{INIT_LNG}}], 16);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 19,
+  }).addTo(map);
+
+  // Custom red marker for emergency
+  const redIcon = L.divIcon({
+    html: `<div style="
+      width:20px; height:20px; background:#ff3b30;
+      border-radius:50%; border:3px solid #fff;
+      box-shadow:0 0 8px rgba(255,59,48,0.8);
+      animation: pulse 1s infinite alternate;
+    "></div>`,
+    className: '',
+    iconAnchor: [10, 10],
+  });
+
+  let marker = L.marker([{{INIT_LAT}}, {{INIT_LNG}}], { icon: redIcon })
+    .addTo(map)
+    .bindPopup('📍 {{USER_NAME}}')
+    .openPopup();
+
+  let pathCoords = [[{{INIT_LAT}}, {{INIT_LNG}}]];
+  let pathLine = L.polyline(pathCoords, { color: '#ff3b30', weight: 3, opacity: 0.7 }).addTo(map);
+
+  // ── WebSocket live updates ─────────────────────────────────────────────────
+  const SESSION_ID = "{{SESSION_ID}}";
+  const WS_BASE    = "{{BASE_URL}}";
+  const statusDot  = document.getElementById('status-dot');
+  const connStatus = document.getElementById('conn-status');
+  const coordsEl   = document.getElementById('coords');
+  const updateEl   = document.getElementById('last-update');
+
+  function connect() {
+    const ws = new WebSocket(`${WS_BASE}/ws/view/${SESSION_ID}`);
+
+    ws.onopen = () => {
+      statusDot.classList.remove('status-offline');
+      connStatus.textContent = 'Live tracking active';
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      const { lat, lng, accuracy } = data;
+
+      // Move marker
+      const latlng = [lat, lng];
+      marker.setLatLng(latlng);
+      map.panTo(latlng);
+
+      // Extend path
+      pathCoords.push(latlng);
+      pathLine.setLatLngs(pathCoords);
+
+      // Update footer
+      coordsEl.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}${accuracy ? ` (±${accuracy.toFixed(0)}m)` : ''}`;
+      updateEl.textContent = `Updated: ${new Date().toLocaleTimeString()}`;
+    };
+
+    ws.onclose = () => {
+      statusDot.classList.add('status-offline');
+      connStatus.textContent = 'Reconnecting…';
+      setTimeout(connect, 3000); // auto-reconnect
+    };
+
+    ws.onerror = () => ws.close();
+  }
+
+  // Only start live WS if session is still active
+  if ("{{STATUS}}" === "LIVE") {
+    connect();
+  } else {
+    statusDot.classList.add('status-offline');
+    connStatus.textContent = 'Session ended – {{USER_NAME}} is safe';
+    document.getElementById('badge').textContent = 'ENDED';
+    document.getElementById('badge').classList.add('ended-badge');
+  }
+</script>
+</body>
+</html>
