@@ -8,7 +8,7 @@ from pathlib import Path
 
 load_dotenv()
 
-from app.routers import auth, contacts, tracking, otp_auth, patient
+from app.routers import auth, contacts, tracking, otp_auth, patient, caretaker
 
 # ── App ───────────────────────────────────────────────────────────────────────
 
@@ -38,6 +38,7 @@ app.include_router(otp_auth.router)
 app.include_router(contacts.router)
 app.include_router(tracking.router)
 app.include_router(patient.router)
+app.include_router(caretaker.router)
 
 # ── Health check ──────────────────────────────────────────────────────────────
 
