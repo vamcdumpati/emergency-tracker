@@ -1,8 +1,8 @@
 """main.py – FastAPI application entry point"""
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI  # pyrefly: ignore [missing-import]
+from fastapi.middleware.cors import CORSMiddleware  # pyrefly: ignore [missing-import]
+from fastapi.staticfiles import StaticFiles  # pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -33,12 +33,18 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 
-app.include_router(auth.router)
-app.include_router(otp_auth.router)
-app.include_router(contacts.router)
-app.include_router(tracking.router)
-app.include_router(patient.router)
-app.include_router(caretaker.router)
+# Web APIs
+app.include_router(auth.router, prefix="/web")
+
+# Mobile APIs
+app.include_router(otp_auth.router, prefix="/mobile")
+app.include_router(contacts.router, prefix="/mobile")
+app.include_router(tracking.router, prefix="/mobile")
+app.include_router(patient.router, prefix="/mobile")
+app.include_router(caretaker.router, prefix="/mobile")
+
+# Public tracking map & socket (no prefix, resolves dynamically via base URL)
+app.include_router(tracking.public_router)
 
 # ── Health check ──────────────────────────────────────────────────────────────
 
@@ -54,5 +60,5 @@ async def health():
 # ── Dev runner ────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    import uvicorn
+    import uvicorn  # pyrefly: ignore [missing-import]
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

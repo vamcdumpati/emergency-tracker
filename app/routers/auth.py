@@ -1,6 +1,7 @@
 """app/routers/auth.py – /register and /login endpoints"""
 
 import hashlib, os
+# pyrefly: ignore [missing-import]
 from fastapi import APIRouter, HTTPException
 from app.models.schemas import RegisterRequest, LoginRequest, UserResponse, MessageResponse
 from app.db.client import supabase
@@ -24,7 +25,8 @@ async def register(body: RegisterRequest):
           "name": "Rahul",
           "email": "rahul@example.com",
           "phone": "9876543210",
-          "password": "secret123"
+          "password": "secret123",
+          "role": "Admin"
         }
     """
     # Check duplicate email
@@ -42,6 +44,7 @@ async def register(body: RegisterRequest):
         "email": body.email,
         "phone": body.phone,
         "password_hash": _hash_password(body.password),
+        "role": body.role,
     }
 
     result = supabase.table("users").insert(row).execute()
@@ -49,9 +52,35 @@ async def register(body: RegisterRequest):
         raise HTTPException(status_code=500, detail="Registration failed")
 
     user = result.data[0]
+
+    # If the user has role 'care taker', automatically create caretaker profile in caretakers table too
+    if body.role == "care taker":
+        name_parts = body.name.split(maxsplit=1)
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else ""
+
+        caretaker_row = {
+            "id": user["id"],
+            "first_name": first_name,
+            "last_name": last_name,
+            "email": body.email,
+            "mobile": body.phone,
+        }
+        caretaker_result = supabase.table("caretakers").insert(caretaker_row).execute()
+        if not caretaker_result.data:
+            # Clean up the created user to maintain integrity
+            supabase.table("users").delete().eq("id", user["id"]).execute()
+            raise HTTPException(status_code=500, detail="Failed to create caretaker profile record")
+
     return MessageResponse(
-        message="User registered successfully",
-        data={"user_id": user["id"], "name": user["name"]},
+        message="Login successful",
+        data={
+            "user_id": user["id"],
+            "name": user["name"],
+            "email": user["email"],
+            "phone": user["phone"],
+            "role": user["role"],
+        },
     )
 
 
@@ -74,6 +103,10 @@ async def login(body: LoginRequest):
     if user["password_hash"] != _hash_password(body.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    # Enforce role-based login: Only super admin or admin can login from web app
+    if user.get("role") not in ["super admin", "admin"]:
+        raise HTTPException(status_code=403, detail="Access denied. Care takers cannot login from the web app.")
+
     return MessageResponse(
         message="Login successful",
         data={
@@ -81,6 +114,7 @@ async def login(body: LoginRequest):
             "name": user["name"],
             "email": user["email"],
             "phone": user["phone"],
+            "role": user.get("role", "care taker"),
         },
     )
 
@@ -89,7 +123,7 @@ async def login(body: LoginRequest):
 async def get_user(user_id: str):
     result = (
         supabase.table("users")
-        .select("id, name, email, phone")
+        .select("id, name, email, phone, role")
         .eq("id", user_id)
         .execute()
     )
@@ -97,4 +131,10 @@ async def get_user(user_id: str):
         raise HTTPException(status_code=404, detail="User not found")
 
     u = result.data[0]
-    return UserResponse(id=u["id"], name=u["name"], email=u["email"], phone=u["phone"])
+    return UserResponse(
+        id=u["id"], 
+        name=u["name"], 
+        email=u["email"], 
+        phone=u["phone"], 
+        role=u.get("role", "care taker")
+    )

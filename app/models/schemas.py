@@ -12,6 +12,15 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     phone: str
     password: str
+    role: str
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, v: str) -> str:
+        valid_roles = ["super admin", "admin", "care taker"]
+        if v not in valid_roles:
+            raise ValueError(f"Role must be one of: {', '.join(valid_roles)}")
+        return v
 
     @field_validator("phone")
     @classmethod
@@ -41,6 +50,7 @@ class UserResponse(BaseModel):
     name: str
     email: str
     phone: str
+    role: str
 
 
 # ── Emergency Contact ─────────────────────────────────────────────────────────
