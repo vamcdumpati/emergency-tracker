@@ -43,6 +43,9 @@ app.include_router(tracking.router, prefix="/mobile")
 app.include_router(patient.router, prefix="/mobile")
 app.include_router(caretaker.router, prefix="/mobile")
 
+# Public tracking map & socket (no prefix, resolves dynamically via base URL)
+app.include_router(tracking.public_router)
+
 # ── Health check ──────────────────────────────────────────────────────────────
 
 @app.get("/", tags=["Health"])

@@ -10,6 +10,7 @@ from app.services.ws_manager import manager
 from pathlib import Path
 
 router = APIRouter(tags=["Tracking"])
+public_router = APIRouter(tags=["Tracking"])
 
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:8000")
 
@@ -151,7 +152,7 @@ async def location_sender(ws: WebSocket, session_id: str):
 
 # ── 4. Browser → WebSocket: viewer listens for updates ───────────────────────
 
-@router.websocket("/ws/view/{session_id}")
+@public_router.websocket("/ws/view/{session_id}")
 async def location_viewer(ws: WebSocket, session_id: str):
     """
     The browser map page connects here to receive live location updates.
@@ -167,7 +168,7 @@ async def location_viewer(ws: WebSocket, session_id: str):
 
 # ── 5. Public tracking page (opens in emergency contact's browser) ────────────
 
-@router.get("/track/{token}", response_class=HTMLResponse)
+@public_router.get("/track/{token}", response_class=HTMLResponse)
 async def tracking_page(token: str):
     """
     Public URL sent to emergency contacts via SMS.
