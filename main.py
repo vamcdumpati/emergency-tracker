@@ -33,12 +33,15 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 
-app.include_router(auth.router)
-app.include_router(otp_auth.router)
-app.include_router(contacts.router)
-app.include_router(tracking.router)
-app.include_router(patient.router)
-app.include_router(caretaker.router)
+# Web APIs
+app.include_router(auth.router, prefix="/web")
+
+# Mobile APIs
+app.include_router(otp_auth.router, prefix="/mobile")
+app.include_router(contacts.router, prefix="/mobile")
+app.include_router(tracking.router, prefix="/mobile")
+app.include_router(patient.router, prefix="/mobile")
+app.include_router(caretaker.router, prefix="/mobile")
 
 # ── Health check ──────────────────────────────────────────────────────────────
 

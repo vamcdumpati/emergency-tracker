@@ -1,6 +1,7 @@
 """app/routers/auth.py – /register and /login endpoints"""
 
 import hashlib, os
+# pyrefly: ignore [missing-import]
 from fastapi import APIRouter, HTTPException
 from app.models.schemas import RegisterRequest, LoginRequest, UserResponse, MessageResponse
 from app.db.client import supabase
@@ -51,6 +52,26 @@ async def register(body: RegisterRequest):
         raise HTTPException(status_code=500, detail="Registration failed")
 
     user = result.data[0]
+
+    # If the user has role 'care taker', automatically create caretaker profile in caretakers table too
+    if body.role == "care taker":
+        name_parts = body.name.split(maxsplit=1)
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else ""
+
+        caretaker_row = {
+            "id": user["id"],
+            "first_name": first_name,
+            "last_name": last_name,
+            "email": body.email,
+            "mobile": body.phone,
+        }
+        caretaker_result = supabase.table("caretakers").insert(caretaker_row).execute()
+        if not caretaker_result.data:
+            # Clean up the created user to maintain integrity
+            supabase.table("users").delete().eq("id", user["id"]).execute()
+            raise HTTPException(status_code=500, detail="Failed to create caretaker profile record")
+
     return MessageResponse(
         message="Login successful",
         data={
@@ -58,7 +79,7 @@ async def register(body: RegisterRequest):
             "name": user["name"],
             "email": user["email"],
             "phone": user["phone"],
-            "role": user["role"],  # Add this line
+            "role": user["role"],
         },
     )
 
