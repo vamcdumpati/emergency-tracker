@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS users (
     email         TEXT UNIQUE NOT NULL,
     phone         TEXT NOT NULL,
     password_hash TEXT NOT NULL,
+    role          TEXT NOT NULL DEFAULT 'care taker',
     created_at    TIMESTAMPTZ DEFAULT now()
 );
 

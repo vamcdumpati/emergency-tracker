@@ -24,7 +24,8 @@ async def register(body: RegisterRequest):
           "name": "Rahul",
           "email": "rahul@example.com",
           "phone": "9876543210",
-          "password": "secret123"
+          "password": "secret123",
+          "role": "Admin"
         }
     """
     # Check duplicate email
@@ -42,6 +43,7 @@ async def register(body: RegisterRequest):
         "email": body.email,
         "phone": body.phone,
         "password_hash": _hash_password(body.password),
+        "role": body.role,
     }
 
     result = supabase.table("users").insert(row).execute()
@@ -50,8 +52,14 @@ async def register(body: RegisterRequest):
 
     user = result.data[0]
     return MessageResponse(
-        message="User registered successfully",
-        data={"user_id": user["id"], "name": user["name"]},
+        message="Login successful",
+        data={
+            "user_id": user["id"],
+            "name": user["name"],
+            "email": user["email"],
+            "phone": user["phone"],
+            "role": user["role"],  # Add this line
+        },
     )
 
 
@@ -74,6 +82,10 @@ async def login(body: LoginRequest):
     if user["password_hash"] != _hash_password(body.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    # Enforce role-based login: Only super admin or admin can login from web app
+    if user.get("role") not in ["super admin", "admin"]:
+        raise HTTPException(status_code=403, detail="Access denied. Care takers cannot login from the web app.")
+
     return MessageResponse(
         message="Login successful",
         data={
@@ -81,6 +93,7 @@ async def login(body: LoginRequest):
             "name": user["name"],
             "email": user["email"],
             "phone": user["phone"],
+            "role": user.get("role", "care taker"),
         },
     )
 
@@ -89,7 +102,7 @@ async def login(body: LoginRequest):
 async def get_user(user_id: str):
     result = (
         supabase.table("users")
-        .select("id, name, email, phone")
+        .select("id, name, email, phone, role")
         .eq("id", user_id)
         .execute()
     )
@@ -97,4 +110,10 @@ async def get_user(user_id: str):
         raise HTTPException(status_code=404, detail="User not found")
 
     u = result.data[0]
-    return UserResponse(id=u["id"], name=u["name"], email=u["email"], phone=u["phone"])
+    return UserResponse(
+        id=u["id"], 
+        name=u["name"], 
+        email=u["email"], 
+        phone=u["phone"], 
+        role=u.get("role", "care taker")
+    )
