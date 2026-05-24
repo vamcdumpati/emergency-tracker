@@ -1,6 +1,8 @@
 # pyrefly: ignore [missing-import]
 from fastapi import APIRouter, HTTPException
+# pyrefly: ignore [missing-import]
 from pydantic import BaseModel
+# pyrefly: ignore [missing-import]
 from app.db.client import supabase
 
 router = APIRouter(prefix="/caretaker", tags=["Caretaker"])

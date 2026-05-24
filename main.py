@@ -1,8 +1,8 @@
 """main.py – FastAPI application entry point"""
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI  # pyrefly: ignore [missing-import]
+from fastapi.middleware.cors import CORSMiddleware  # pyrefly: ignore [missing-import]
+from fastapi.staticfiles import StaticFiles  # pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -60,5 +60,5 @@ async def health():
 # ── Dev runner ────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    import uvicorn
+    import uvicorn  # pyrefly: ignore [missing-import]
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
